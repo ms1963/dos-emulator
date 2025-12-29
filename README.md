@@ -1,4 +1,4 @@
-# Go cak to the past with the dos-emulator
+# Go back to the past with the dos-emulator
 
 This application implements an emulation of the 8086-CPU family and provides a shell with MS-DOS emulation.
 
