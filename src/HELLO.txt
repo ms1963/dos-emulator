@@ -1,0 +1,1 @@
+Assemble hello.asm with: nasm -f bin hello.asm -o hello.com and the call run hello.com from the shell.
