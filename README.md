@@ -11,7 +11,7 @@ On errors, don't hesitate to contact me or - better - to report an issue.
 
 ## To build the dos-emulator use the Go compiler:
 
-### go build -o dos-emulator dos.go
+go build -o dos-emulator dos.go
 
 
 
