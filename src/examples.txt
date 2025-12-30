@@ -1,0 +1,11 @@
+Assemble <file_name>.asm with: 
+
+    nasm -f bin <file_name>.asm -o <file_name>.com 
+
+and then call
+
+    run <file_name>.com 
+
+from the shell. 
+
+You can download nasm for different operating systems from www.nasm.us
