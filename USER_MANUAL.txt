@@ -2273,7 +2273,7 @@ A: Your program called an interrupt function that isn't implemented in the emula
 
 ## Appendices
 ### Appendix A: Complete Interrupt Reference
-INT 10h - Video Services
+#### INT 10h - Video Services
 Function 00h - Set Video Mode
 Input:  AH = 00h
         AL = video mode
@@ -2317,7 +2317,7 @@ Output: AL = video mode
         AH = number of columns
         BH = active page
 
-INT 13h - Disk Services
+#### INT 13h - Disk Services
 Function 00h - Reset Disk System
 Input:  AH = 00h
         DL = drive number
@@ -2345,7 +2345,7 @@ Output: CF = 0 if successful
         DH = maximum head number
         DL = number of drives
 
-INT 16h - Keyboard Services
+#### INT 16h - Keyboard Services
 Function 00h - Read Keystroke
 Input:  AH = 00h
 Output: AH = BIOS scan code
@@ -2370,7 +2370,7 @@ Output: AL = shift flags
         Bit 6: Caps Lock on
         Bit 7: Insert mode on
 
-INT 1Ah - Time Services
+#### INT 1Ah - Time Services
 Function 00h - Get System Time
 Input:  AH = 00h
 Output: CX = high word of tick count
@@ -2392,7 +2392,7 @@ Output: CF = 0 if successful
         DH = month (BCD)
         DL = day (BCD)
 
-INT 21h - DOS Services (Selected Functions)
+#### INT 21h - DOS Services (Selected Functions)
 Function 01h - Character Input with Echo
 Input:  AH = 01h
 Output: AL = character read
