@@ -1,1 +1,9 @@
-Assemble hello.asm with: nasm -f bin hello.asm -o hello.com and the call run hello.com from the shell.
+Assemble hello.asm with: 
+
+    nasm -f bin hello.asm -o hello.com 
+
+and then call
+
+    run hello.com from the shell. 
+
+You can download nasm for different operating systems from www.nasm.us
