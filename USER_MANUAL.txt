@@ -1,4 +1,4 @@
-MS-DOS Emulator v4.0 - User Manual
+MS-DOS Emulator v5.0 - User Manual
 Table of Contents
 
 Introduction
