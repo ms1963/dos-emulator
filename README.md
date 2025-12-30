@@ -29,4 +29,4 @@ GOOS=darwin GOARCH=arm64 go build -o myapp-mac-arm
 ### Build for Linux (64-bit) - your native platform
 GOOS=linux GOARCH=amd64 go build -o myapp-linux
 
-*Enjoy the dos-emulator time machine!*
+**Enjoy the dos-emulator time machine!**
