@@ -1,4 +1,4 @@
-# ^Go back to the past with the dos-emu
+# Go back to the past with the dos-emu
 
 This application implements an emulation of the 8086-CPU family and provides a shell with MS-DOS emulation.
 
