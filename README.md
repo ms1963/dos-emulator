@@ -1,3 +1,6 @@
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/4cea2842-8225-4612-a743-65acd386520e" />
+
+
 # Go back to the past with the dos-emulator
 
 This application implements an emulation of the 8086-CPU family and provides a shell with MS-DOS emulation.
