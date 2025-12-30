@@ -63,8 +63,8 @@ Run the executable to start the interactive shell:
 
 You will see:
 ╔══════════════════════════════════════════════════════════════╗
-║     MS-DOS Emulator v4.0 - COMPLETE IMPLEMENTATION          ║
-║     Full 8086 CPU + BIOS + DOS + 100+ Instructions          ║
+║     MS-DOS Emulator v5.0 - COMPLETE IMPLEMENTATION           ║
+║     Full 8086 CPU + BIOS + DOS + 100+ Instructions           ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Type 'HELP' for available commands
@@ -99,7 +99,7 @@ Output:
 ╠══════════════════════════════════════════════════════════════╣
 ║ File: DIR, CD, MD, RD, DEL, TYPE, COPY, REN                  ║
 ║ System: CLS, VER, DATE, TIME, MEM, ECHO                      ║
-║ Emulator: RUN, DEBUG, STEP, TRACE, REGS, BREAK, DUMP        ║
+║ Emulator: RUN, DEBUG, STEP, TRACE, REGS, BREAK, DUMP         ║
 ║           STACK, STATS, DISASM, EXIT                         ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -395,11 +395,11 @@ A:\> REGS
 ╔══════════════════════════════════════════════════════════════╗
 ║                      CPU REGISTERS                           ║
 ╠══════════════════════════════════════════════════════════════╣
-║ AX=1234  BX=5678  CX=9ABC  DX=DEF0                        ║
-║ SI=0000  DI=0000  BP=0000  SP=FFFE                        ║
-║ CS=1000  DS=1000  ES=1000  SS=1000                        ║
-║ IP=0100  FLAGS=0002                                        ║
-║ Flags: ZF                                                  ║
+║ AX=1234  BX=5678  CX=9ABC  DX=DEF0                           ║
+║ SI=0000  DI=0000  BP=0000  SP=FFFE                           ║
+║ CS=1000  DS=1000  ES=1000  SS=1000                           ║
+║ IP=0100  FLAGS=0002                                          ║
+║ Flags: ZF                                                    ║
 ╚══════════════════════════════════════════════════════════════╝
 
 A:\>
@@ -739,11 +739,11 @@ Press Enter (c=continue, q=quit, r=registers)> r
 ╔══════════════════════════════════════════════════════════════╗
 ║                      CPU REGISTERS                           ║
 ╠══════════════════════════════════════════════════════════════╣
-║ AX=0008  BX=0003  CX=0000  DX=0000                        ║
-║ SI=0000  DI=0000  BP=0000  SP=FFFE                        ║
-║ CS=1000  DS=1000  ES=1000  SS=1000                        ║
-║ IP=010A  FLAGS=0002                                        ║
-║ Flags:                                                     ║
+║ AX=0008  BX=0003  CX=0000  DX=0000                           ║
+║ SI=0000  DI=0000  BP=0000  SP=FFFE                           ║
+║ CS=1000  DS=1000  ES=1000  SS=1000                           ║
+║ IP=010A  FLAGS=0002                                          ║
+║ Flags:                                                       ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Press Enter (c=continue, q=quit, r=registers)> c
