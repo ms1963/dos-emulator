@@ -9,22 +9,22 @@ On errors, don't hesitate to contact me or - better - to report an issue.
 
 
 
-To build the dos-emulator use the Go compiler:
+# To build the dos-emulator use the Go compiler:
 
-go build -o dos-emulator dos.go
+## go build -o dos-emulator dos.go
 
 
 
-For cross-compilation use:
+# For cross-compilation use:
 
-# Build for Windows (64-bit)
+## Build for Windows (64-bit)
 GOOS=windows GOARCH=amd64 go build -o myapp.exe
 
-# Build for macOS (Intel)
+## Build for macOS (Intel)
 GOOS=darwin GOARCH=amd64 go build -o myapp-mac-intel
 
-# Build for macOS (Apple Silicon)
+## Build for macOS (Apple Silicon)
 GOOS=darwin GOARCH=arm64 go build -o myapp-mac-arm
 
-# Build for Linux (64-bit) - your native platform
+## Build for Linux (64-bit) - your native platform
 GOOS=linux GOARCH=amd64 go build -o myapp-linux
