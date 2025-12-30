@@ -21,15 +21,15 @@ go build -o dos-emulator dos.go
 ## For cross-compilation use:
 
 ### Build for Windows (64-bit)
-GOOS=windows GOARCH=amd64 go build -o myapp.exe
+GOOS=windows GOARCH=amd64 go build -o dos-emulator.exe
 
 ### Build for macOS (Intel)
-GOOS=darwin GOARCH=amd64 go build -o myapp-mac-intel
+GOOS=darwin GOARCH=amd64 go build -o dos-emulator-mac-intel
 
 ### Build for macOS (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o myapp-mac-arm
+GOOS=darwin GOARCH=arm64 go build -o dos-emulator-mac-arm
 
-### Build for Linux (64-bit) - your native platform
-GOOS=linux GOARCH=amd64 go build -o myapp-linux
+### Build for Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o dos-emulator-linux
 
 **Enjoy the dos-emulator time machine!**
