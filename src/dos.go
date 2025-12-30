@@ -528,6 +528,10 @@ func (d *InstructionDecoder) Decode(addr uint32) *Instruction {
 			inst.Name = "JMP"
 		} else if reg == 6 {
 			inst.Name = "PUSH"
+		} else if reg == 0 {
+			inst.Name = "INC"
+		} else if reg == 1 {
+			inst.Name = "DEC"
 		}
 	case 0x9A:
 		inst.Operand1 = d.memory.ReadWord(addr + 1)
@@ -690,6 +694,40 @@ func (d *InstructionDecoder) Decode(addr uint32) *Instruction {
 		inst.Name = "XLAT"
 	case 0xF2, 0xF3:
 		inst.Name = "REP"
+	case 0x27:
+		inst.Name = "DAA"
+	case 0x2F:
+		inst.Name = "DAS"
+	case 0x37:
+		inst.Name = "AAA"
+	case 0x3F:
+		inst.Name = "AAS"
+	case 0x60:
+		inst.Name = "PUSHA"
+	case 0x61:
+		inst.Name = "POPA"
+	case 0x8F:
+		inst.ModRM = d.memory.ReadByte(addr + 1)
+		inst.HasModRM = true
+		inst.Length = 2 + d.calculateModRMLength(inst.ModRM)
+		inst.Name = "POP"
+	case 0xC0, 0xC1:
+		inst.ModRM = d.memory.ReadByte(addr + 1)
+		inst.HasModRM = true
+		inst.Length = 3 + d.calculateModRMLength(inst.ModRM)
+		reg := (inst.ModRM >> 3) & 0x07
+		shiftNames := []string{"ROL", "ROR", "RCL", "RCR", "SHL", "SHR", "SAL", "SAR"}
+		inst.Name = shiftNames[reg]
+	case 0xC4:
+		inst.ModRM = d.memory.ReadByte(addr + 1)
+		inst.HasModRM = true
+		inst.Length = 2 + d.calculateModRMLength(inst.ModRM)
+		inst.Name = "LES"
+	case 0xC5:
+		inst.ModRM = d.memory.ReadByte(addr + 1)
+		inst.HasModRM = true
+		inst.Length = 2 + d.calculateModRMLength(inst.ModRM)
+		inst.Name = "LDS"
 	default:
 		inst.Name = fmt.Sprintf("UNKNOWN (0x%02X)", inst.Opcode)
 	}
@@ -1704,6 +1742,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 	case 0x90:
 		e.cpu.IP++
 
+	// MOV r/m8, r8 (0x88)
 	case 0x88:
 		mod := (inst.ModRM >> 6) & 0x03
 		reg := (inst.ModRM >> 3) & 0x07
@@ -1754,6 +1793,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		}
 		e.cpu.IP += uint16(inst.Length)
 
+	// MOV r/m16, r16 (0x89)
 	case 0x89:
 		mod := (inst.ModRM >> 6) & 0x03
 		reg := (inst.ModRM >> 3) & 0x07
@@ -1804,6 +1844,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		}
 		e.cpu.IP += uint16(inst.Length)
 
+	// MOV r8, r/m8 (0x8A)
 	case 0x8A:
 		mod := (inst.ModRM >> 6) & 0x03
 		reg := (inst.ModRM >> 3) & 0x07
@@ -1854,6 +1895,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		}
 		e.cpu.IP += uint16(inst.Length)
 
+	// MOV r16, r/m16 (0x8B)
 	case 0x8B:
 		mod := (inst.ModRM >> 6) & 0x03
 		reg := (inst.ModRM >> 3) & 0x07
@@ -1904,6 +1946,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		}
 		e.cpu.IP += uint16(inst.Length)
 
+	// MOV r8, imm8 (0xB0-0xB7)
 	case 0xB0:
 		e.cpu.SetAL(byte(inst.Operand1))
 		e.cpu.IP += uint16(inst.Length)
@@ -1928,6 +1971,8 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 	case 0xB7:
 		e.cpu.SetBH(byte(inst.Operand1))
 		e.cpu.IP += uint16(inst.Length)
+
+	// MOV r16, imm16 (0xB8-0xBF)
 	case 0xB8:
 		e.cpu.AX = inst.Operand1
 		e.cpu.IP += uint16(inst.Length)
@@ -1953,6 +1998,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.DI = inst.Operand1
 		e.cpu.IP += uint16(inst.Length)
 
+	// PUSH r16 (0x50-0x57)
 	case 0x50:
 		e.Push(e.cpu.AX)
 		e.cpu.IP++
@@ -1977,6 +2023,8 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 	case 0x57:
 		e.Push(e.cpu.DI)
 		e.cpu.IP++
+
+	// PUSH segment (0x06, 0x0E, 0x16, 0x1E)
 	case 0x06:
 		e.Push(e.cpu.ES)
 		e.cpu.IP++
@@ -1990,6 +2038,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.Push(e.cpu.DS)
 		e.cpu.IP++
 
+	// POP r16 (0x58-0x5F)
 	case 0x58:
 		e.cpu.AX = e.Pop()
 		e.cpu.IP++
@@ -2014,6 +2063,8 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 	case 0x5F:
 		e.cpu.DI = e.Pop()
 		e.cpu.IP++
+
+	// POP segment (0x07, 0x17, 0x1F)
 	case 0x07:
 		e.cpu.ES = e.Pop()
 		e.cpu.IP++
@@ -2024,6 +2075,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.DS = e.Pop()
 		e.cpu.IP++
 
+	// PUSHF/POPF
 	case 0x9C:
 		e.Push(e.cpu.Flags.ToUint16())
 		e.cpu.IP++
@@ -2031,6 +2083,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.Flags.FromUint16(e.Pop())
 		e.cpu.IP++
 
+	// INC r16 (0x40-0x47)
 	case 0x40:
 		e.cpu.AX++
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
@@ -2060,6 +2113,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.DI++
 		e.cpu.IP++
 
+	// DEC r16 (0x48-0x4F)
 	case 0x48:
 		e.cpu.AX--
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
@@ -2089,12 +2143,333 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.DI--
 		e.cpu.IP++
 
+	// ADD r/m8, r8 (0x00)
+	case 0x00:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		switch reg {
+		case 0:
+			src = e.cpu.GetAL()
+		case 1:
+			src = e.cpu.GetCL()
+		case 2:
+			src = e.cpu.GetDL()
+		case 3:
+			src = e.cpu.GetBL()
+		case 4:
+			src = e.cpu.GetAH()
+		case 5:
+			src = e.cpu.GetCH()
+		case 6:
+			src = e.cpu.GetDH()
+		case 7:
+			src = e.cpu.GetBH()
+		}
+
+		var dst byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.GetAL()
+			case 1:
+				dst = e.cpu.GetCL()
+			case 2:
+				dst = e.cpu.GetDL()
+			case 3:
+				dst = e.cpu.GetBL()
+			case 4:
+				dst = e.cpu.GetAH()
+			case 5:
+				dst = e.cpu.GetCH()
+			case 6:
+				dst = e.cpu.GetDH()
+			case 7:
+				dst = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadByte(addr)
+		}
+
+		result := uint16(dst) + uint16(src)
+		e.cpu.Flags.CF = result > 0xFF
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^result8)&(src^result8)&0x80) != 0
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.SetAL(result8)
+			case 1:
+				e.cpu.SetCL(result8)
+			case 2:
+				e.cpu.SetDL(result8)
+			case 3:
+				e.cpu.SetBL(result8)
+			case 4:
+				e.cpu.SetAH(result8)
+			case 5:
+				e.cpu.SetCH(result8)
+			case 6:
+				e.cpu.SetDH(result8)
+			case 7:
+				e.cpu.SetBH(result8)
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteByte(addr, result8)
+		}
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// ADD r/m16, r16 (0x01)
+	case 0x01:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		switch reg {
+		case 0:
+			src = e.cpu.AX
+		case 1:
+			src = e.cpu.CX
+		case 2:
+			src = e.cpu.DX
+		case 3:
+			src = e.cpu.BX
+		case 4:
+			src = e.cpu.SP
+		case 5:
+			src = e.cpu.BP
+		case 6:
+			src = e.cpu.SI
+		case 7:
+			src = e.cpu.DI
+		}
+
+		var dst uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.AX
+			case 1:
+				dst = e.cpu.CX
+			case 2:
+				dst = e.cpu.DX
+			case 3:
+				dst = e.cpu.BX
+			case 4:
+				dst = e.cpu.SP
+			case 5:
+				dst = e.cpu.BP
+			case 6:
+				dst = e.cpu.SI
+			case 7:
+				dst = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadWord(addr)
+		}
+
+		result := uint32(dst) + uint32(src)
+		e.cpu.Flags.CF = result > 0xFFFF
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^result16)&(src^result16)&0x8000) != 0
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.AX = result16
+			case 1:
+				e.cpu.CX = result16
+			case 2:
+				e.cpu.DX = result16
+			case 3:
+				e.cpu.BX = result16
+			case 4:
+				e.cpu.SP = result16
+			case 5:
+				e.cpu.BP = result16
+			case 6:
+				e.cpu.SI = result16
+			case 7:
+				e.cpu.DI = result16
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteWord(addr, result16)
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// ADD r8, r/m8 (0x02)
+	case 0x02:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.GetAL()
+			case 1:
+				src = e.cpu.GetCL()
+			case 2:
+				src = e.cpu.GetDL()
+			case 3:
+				src = e.cpu.GetBL()
+			case 4:
+				src = e.cpu.GetAH()
+			case 5:
+				src = e.cpu.GetCH()
+			case 6:
+				src = e.cpu.GetDH()
+			case 7:
+				src = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadByte(addr)
+		}
+
+		var dst byte
+		switch reg {
+		case 0:
+			dst = e.cpu.GetAL()
+		case 1:
+			dst = e.cpu.GetCL()
+		case 2:
+			dst = e.cpu.GetDL()
+		case 3:
+			dst = e.cpu.GetBL()
+		case 4:
+			dst = e.cpu.GetAH()
+		case 5:
+			dst = e.cpu.GetCH()
+		case 6:
+			dst = e.cpu.GetDH()
+		case 7:
+			dst = e.cpu.GetBH()
+		}
+
+		result := uint16(dst) + uint16(src)
+		e.cpu.Flags.CF = result > 0xFF
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^result8)&(src^result8)&0x80) != 0
+
+		switch reg {
+		case 0:
+			e.cpu.SetAL(result8)
+		case 1:
+			e.cpu.SetCL(result8)
+		case 2:
+			e.cpu.SetDL(result8)
+		case 3:
+			e.cpu.SetBL(result8)
+		case 4:
+			e.cpu.SetAH(result8)
+		case 5:
+			e.cpu.SetCH(result8)
+		case 6:
+			e.cpu.SetDH(result8)
+		case 7:
+			e.cpu.SetBH(result8)
+		}
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// ADD r16, r/m16 (0x03)
+	case 0x03:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.AX
+			case 1:
+				src = e.cpu.CX
+			case 2:
+				src = e.cpu.DX
+			case 3:
+				src = e.cpu.BX
+			case 4:
+				src = e.cpu.SP
+			case 5:
+				src = e.cpu.BP
+			case 6:
+				src = e.cpu.SI
+			case 7:
+				src = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadWord(addr)
+		}
+
+		var dst uint16
+		switch reg {
+		case 0:
+			dst = e.cpu.AX
+		case 1:
+			dst = e.cpu.CX
+		case 2:
+			dst = e.cpu.DX
+		case 3:
+			dst = e.cpu.BX
+		case 4:
+			dst = e.cpu.SP
+		case 5:
+			dst = e.cpu.BP
+		case 6:
+			dst = e.cpu.SI
+		case 7:
+			dst = e.cpu.DI
+		}
+
+		result := uint32(dst) + uint32(src)
+		e.cpu.Flags.CF = result > 0xFFFF
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^result16)&(src^result16)&0x8000) != 0
+
+		switch reg {
+		case 0:
+			e.cpu.AX = result16
+		case 1:
+			e.cpu.CX = result16
+		case 2:
+			e.cpu.DX = result16
+		case 3:
+			e.cpu.BX = result16
+		case 4:
+			e.cpu.SP = result16
+		case 5:
+			e.cpu.BP = result16
+		case 6:
+			e.cpu.SI = result16
+		case 7:
+			e.cpu.DI = result16
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// ADD AL, imm8 (0x04)
 	case 0x04:
 		result := uint16(e.cpu.GetAL()) + inst.Immediate
 		e.cpu.Flags.CF = result > 0xFF
 		e.cpu.SetAL(byte(result))
 		e.cpu.UpdateArithmeticFlags8(byte(result))
 		e.cpu.IP += uint16(inst.Length)
+
+	// ADD AX, imm16 (0x05)
 	case 0x05:
 		result := uint32(e.cpu.AX) + uint32(inst.Immediate)
 		e.cpu.Flags.CF = result > 0xFFFF
@@ -2102,12 +2477,333 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
 
+	// SUB r/m8, r8 (0x28)
+	case 0x28:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		switch reg {
+		case 0:
+			src = e.cpu.GetAL()
+		case 1:
+			src = e.cpu.GetCL()
+		case 2:
+			src = e.cpu.GetDL()
+		case 3:
+			src = e.cpu.GetBL()
+		case 4:
+			src = e.cpu.GetAH()
+		case 5:
+			src = e.cpu.GetCH()
+		case 6:
+			src = e.cpu.GetDH()
+		case 7:
+			src = e.cpu.GetBH()
+		}
+
+		var dst byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.GetAL()
+			case 1:
+				dst = e.cpu.GetCL()
+			case 2:
+				dst = e.cpu.GetDL()
+			case 3:
+				dst = e.cpu.GetBL()
+			case 4:
+				dst = e.cpu.GetAH()
+			case 5:
+				dst = e.cpu.GetCH()
+			case 6:
+				dst = e.cpu.GetDH()
+			case 7:
+				dst = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadByte(addr)
+		}
+
+		result := int16(dst) - int16(src)
+		e.cpu.Flags.CF = result < 0
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result8)&0x80) != 0
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.SetAL(result8)
+			case 1:
+				e.cpu.SetCL(result8)
+			case 2:
+				e.cpu.SetDL(result8)
+			case 3:
+				e.cpu.SetBL(result8)
+			case 4:
+				e.cpu.SetAH(result8)
+			case 5:
+				e.cpu.SetCH(result8)
+			case 6:
+				e.cpu.SetDH(result8)
+			case 7:
+				e.cpu.SetBH(result8)
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteByte(addr, result8)
+		}
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// SUB r/m16, r16 (0x29)
+	case 0x29:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		switch reg {
+		case 0:
+			src = e.cpu.AX
+		case 1:
+			src = e.cpu.CX
+		case 2:
+			src = e.cpu.DX
+		case 3:
+			src = e.cpu.BX
+		case 4:
+			src = e.cpu.SP
+		case 5:
+			src = e.cpu.BP
+		case 6:
+			src = e.cpu.SI
+		case 7:
+			src = e.cpu.DI
+		}
+
+		var dst uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.AX
+			case 1:
+				dst = e.cpu.CX
+			case 2:
+				dst = e.cpu.DX
+			case 3:
+				dst = e.cpu.BX
+			case 4:
+				dst = e.cpu.SP
+			case 5:
+				dst = e.cpu.BP
+			case 6:
+				dst = e.cpu.SI
+			case 7:
+				dst = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadWord(addr)
+		}
+
+		result := int32(dst) - int32(src)
+		e.cpu.Flags.CF = result < 0
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result16)&0x8000) != 0
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.AX = result16
+			case 1:
+				e.cpu.CX = result16
+			case 2:
+				e.cpu.DX = result16
+			case 3:
+				e.cpu.BX = result16
+			case 4:
+				e.cpu.SP = result16
+			case 5:
+				e.cpu.BP = result16
+			case 6:
+				e.cpu.SI = result16
+			case 7:
+				e.cpu.DI = result16
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteWord(addr, result16)
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// SUB r8, r/m8 (0x2A)
+	case 0x2A:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.GetAL()
+			case 1:
+				src = e.cpu.GetCL()
+			case 2:
+				src = e.cpu.GetDL()
+			case 3:
+				src = e.cpu.GetBL()
+			case 4:
+				src = e.cpu.GetAH()
+			case 5:
+				src = e.cpu.GetCH()
+			case 6:
+				src = e.cpu.GetDH()
+			case 7:
+				src = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadByte(addr)
+		}
+
+		var dst byte
+		switch reg {
+		case 0:
+			dst = e.cpu.GetAL()
+		case 1:
+			dst = e.cpu.GetCL()
+		case 2:
+			dst = e.cpu.GetDL()
+		case 3:
+			dst = e.cpu.GetBL()
+		case 4:
+			dst = e.cpu.GetAH()
+		case 5:
+			dst = e.cpu.GetCH()
+		case 6:
+			dst = e.cpu.GetDH()
+		case 7:
+			dst = e.cpu.GetBH()
+		}
+
+		result := int16(dst) - int16(src)
+		e.cpu.Flags.CF = result < 0
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result8)&0x80) != 0
+
+		switch reg {
+		case 0:
+			e.cpu.SetAL(result8)
+		case 1:
+			e.cpu.SetCL(result8)
+		case 2:
+			e.cpu.SetDL(result8)
+		case 3:
+			e.cpu.SetBL(result8)
+		case 4:
+			e.cpu.SetAH(result8)
+		case 5:
+			e.cpu.SetCH(result8)
+		case 6:
+			e.cpu.SetDH(result8)
+		case 7:
+			e.cpu.SetBH(result8)
+		}
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// SUB r16, r/m16 (0x2B)
+	case 0x2B:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.AX
+			case 1:
+				src = e.cpu.CX
+			case 2:
+				src = e.cpu.DX
+			case 3:
+				src = e.cpu.BX
+			case 4:
+				src = e.cpu.SP
+			case 5:
+				src = e.cpu.BP
+			case 6:
+				src = e.cpu.SI
+			case 7:
+				src = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadWord(addr)
+		}
+
+		var dst uint16
+		switch reg {
+		case 0:
+			dst = e.cpu.AX
+		case 1:
+			dst = e.cpu.CX
+		case 2:
+			dst = e.cpu.DX
+		case 3:
+			dst = e.cpu.BX
+		case 4:
+			dst = e.cpu.SP
+		case 5:
+			dst = e.cpu.BP
+		case 6:
+			dst = e.cpu.SI
+		case 7:
+			dst = e.cpu.DI
+		}
+
+		result := int32(dst) - int32(src)
+		e.cpu.Flags.CF = result < 0
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result16)&0x8000) != 0
+
+		switch reg {
+		case 0:
+			e.cpu.AX = result16
+		case 1:
+			e.cpu.CX = result16
+		case 2:
+			e.cpu.DX = result16
+		case 3:
+			e.cpu.BX = result16
+		case 4:
+			e.cpu.SP = result16
+		case 5:
+			e.cpu.BP = result16
+		case 6:
+			e.cpu.SI = result16
+		case 7:
+			e.cpu.DI = result16
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// SUB AL, imm8 (0x2C)
 	case 0x2C:
 		result := int16(e.cpu.GetAL()) - int16(inst.Immediate)
 		e.cpu.Flags.CF = result < 0
 		e.cpu.SetAL(byte(result))
 		e.cpu.UpdateArithmeticFlags8(byte(result))
 		e.cpu.IP += uint16(inst.Length)
+
+	// SUB AX, imm16 (0x2D)
 	case 0x2D:
 		result := int32(e.cpu.AX) - int32(inst.Immediate)
 		e.cpu.Flags.CF = result < 0
@@ -2115,12 +2811,247 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
 
+	// CMP r/m8, r8 (0x38)
+	case 0x38:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		switch reg {
+		case 0:
+			src = e.cpu.GetAL()
+		case 1:
+			src = e.cpu.GetCL()
+		case 2:
+			src = e.cpu.GetDL()
+		case 3:
+			src = e.cpu.GetBL()
+		case 4:
+			src = e.cpu.GetAH()
+		case 5:
+			src = e.cpu.GetCH()
+		case 6:
+			src = e.cpu.GetDH()
+		case 7:
+			src = e.cpu.GetBH()
+		}
+
+		var dst byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.GetAL()
+			case 1:
+				dst = e.cpu.GetCL()
+			case 2:
+				dst = e.cpu.GetDL()
+			case 3:
+				dst = e.cpu.GetBL()
+			case 4:
+				dst = e.cpu.GetAH()
+			case 5:
+				dst = e.cpu.GetCH()
+			case 6:
+				dst = e.cpu.GetDH()
+			case 7:
+				dst = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadByte(addr)
+		}
+
+		result := int16(dst) - int16(src)
+		e.cpu.Flags.CF = result < 0
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result8)&0x80) != 0
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// CMP r/m16, r16 (0x39)
+	case 0x39:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		switch reg {
+		case 0:
+			src = e.cpu.AX
+		case 1:
+			src = e.cpu.CX
+		case 2:
+			src = e.cpu.DX
+		case 3:
+			src = e.cpu.BX
+		case 4:
+			src = e.cpu.SP
+		case 5:
+			src = e.cpu.BP
+		case 6:
+			src = e.cpu.SI
+		case 7:
+			src = e.cpu.DI
+		}
+
+		var dst uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.AX
+			case 1:
+				dst = e.cpu.CX
+			case 2:
+				dst = e.cpu.DX
+			case 3:
+				dst = e.cpu.BX
+			case 4:
+				dst = e.cpu.SP
+			case 5:
+				dst = e.cpu.BP
+			case 6:
+				dst = e.cpu.SI
+			case 7:
+				dst = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadWord(addr)
+		}
+
+		result := int32(dst) - int32(src)
+		e.cpu.Flags.CF = result < 0
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result16)&0x8000) != 0
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// CMP r8, r/m8 (0x3A)
+	case 0x3A:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.GetAL()
+			case 1:
+				src = e.cpu.GetCL()
+			case 2:
+				src = e.cpu.GetDL()
+			case 3:
+				src = e.cpu.GetBL()
+			case 4:
+				src = e.cpu.GetAH()
+			case 5:
+				src = e.cpu.GetCH()
+			case 6:
+				src = e.cpu.GetDH()
+			case 7:
+				src = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadByte(addr)
+		}
+
+		var dst byte
+		switch reg {
+		case 0:
+			dst = e.cpu.GetAL()
+		case 1:
+			dst = e.cpu.GetCL()
+		case 2:
+			dst = e.cpu.GetDL()
+		case 3:
+			dst = e.cpu.GetBL()
+		case 4:
+			dst = e.cpu.GetAH()
+		case 5:
+			dst = e.cpu.GetCH()
+		case 6:
+			dst = e.cpu.GetDH()
+		case 7:
+			dst = e.cpu.GetBH()
+		}
+
+		result := int16(dst) - int16(src)
+		e.cpu.Flags.CF = result < 0
+		result8 := byte(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result8)&0x80) != 0
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	// CMP r16, r/m16 (0x3B)
+	case 0x3B:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var src uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				src = e.cpu.AX
+			case 1:
+				src = e.cpu.CX
+			case 2:
+				src = e.cpu.DX
+			case 3:
+				src = e.cpu.BX
+			case 4:
+				src = e.cpu.SP
+			case 5:
+				src = e.cpu.BP
+			case 6:
+				src = e.cpu.SI
+			case 7:
+				src = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			src = e.memory.ReadWord(addr)
+		}
+
+		var dst uint16
+		switch reg {
+		case 0:
+			dst = e.cpu.AX
+		case 1:
+			dst = e.cpu.CX
+		case 2:
+			dst = e.cpu.DX
+		case 3:
+			dst = e.cpu.BX
+		case 4:
+			dst = e.cpu.SP
+		case 5:
+			dst = e.cpu.BP
+		case 6:
+			dst = e.cpu.SI
+		case 7:
+			dst = e.cpu.DI
+		}
+
+		result := int32(dst) - int32(src)
+		e.cpu.Flags.CF = result < 0
+		result16 := uint16(result)
+		e.cpu.Flags.OF = ((dst^src)&(dst^result16)&0x8000) != 0
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// CMP AL, imm8 (0x3C)
 	case 0x3C:
 		result := int16(e.cpu.GetAL()) - int16(inst.Immediate)
 		e.cpu.Flags.CF = result < 0
 		e.cpu.UpdateZeroFlag8(byte(result))
 		e.cpu.UpdateSignFlag8(byte(result))
 		e.cpu.IP += uint16(inst.Length)
+
+	// CMP AX, imm16 (0x3D)
 	case 0x3D:
 		result := int32(e.cpu.AX) - int32(inst.Immediate)
 		e.cpu.Flags.CF = result < 0
@@ -2128,12 +3059,15 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateSignFlag(uint16(result))
 		e.cpu.IP += uint16(inst.Length)
 
+	// AND AL, imm8 (0x24)
 	case 0x24:
 		e.cpu.SetAL(e.cpu.GetAL() & byte(inst.Immediate))
 		e.cpu.Flags.CF = false
 		e.cpu.Flags.OF = false
 		e.cpu.UpdateArithmeticFlags8(e.cpu.GetAL())
 		e.cpu.IP += uint16(inst.Length)
+
+	// AND AX, imm16 (0x25)
 	case 0x25:
 		e.cpu.AX = e.cpu.AX & inst.Immediate
 		e.cpu.Flags.CF = false
@@ -2141,12 +3075,15 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
 
+	// OR AL, imm8 (0x0C)
 	case 0x0C:
 		e.cpu.SetAL(e.cpu.GetAL() | byte(inst.Immediate))
 		e.cpu.Flags.CF = false
 		e.cpu.Flags.OF = false
 		e.cpu.UpdateArithmeticFlags8(e.cpu.GetAL())
 		e.cpu.IP += uint16(inst.Length)
+
+	// OR AX, imm16 (0x0D)
 	case 0x0D:
 		e.cpu.AX = e.cpu.AX | inst.Immediate
 		e.cpu.Flags.CF = false
@@ -2154,12 +3091,15 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
 
+	// XOR AL, imm8 (0x34)
 	case 0x34:
 		e.cpu.SetAL(e.cpu.GetAL() ^ byte(inst.Immediate))
 		e.cpu.Flags.CF = false
 		e.cpu.Flags.OF = false
 		e.cpu.UpdateArithmeticFlags8(e.cpu.GetAL())
 		e.cpu.IP += uint16(inst.Length)
+
+	// XOR AX, imm16 (0x35)
 	case 0x35:
 		e.cpu.AX = e.cpu.AX ^ inst.Immediate
 		e.cpu.Flags.CF = false
@@ -2167,6 +3107,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
 
+	// String operations
 	case 0xA4:
 		srcAddr := CalculateAddress(e.cpu.DS, e.cpu.SI)
 		dstAddr := CalculateAddress(e.cpu.ES, e.cpu.DI)
@@ -2179,6 +3120,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.DI++
 		}
 		e.cpu.IP++
+
 	case 0xA5:
 		srcAddr := CalculateAddress(e.cpu.DS, e.cpu.SI)
 		dstAddr := CalculateAddress(e.cpu.ES, e.cpu.DI)
@@ -2201,6 +3143,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.DI++
 		}
 		e.cpu.IP++
+
 	case 0xAB:
 		dstAddr := CalculateAddress(e.cpu.ES, e.cpu.DI)
 		e.memory.WriteWord(dstAddr, e.cpu.AX)
@@ -2220,6 +3163,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.SI++
 		}
 		e.cpu.IP++
+
 	case 0xAD:
 		srcAddr := CalculateAddress(e.cpu.DS, e.cpu.SI)
 		e.cpu.AX = e.memory.ReadWord(srcAddr)
@@ -2230,12 +3174,15 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		}
 		e.cpu.IP++
 
+	// Jumps
 	case 0xEB:
 		offset := int8(inst.Operand1)
 		e.cpu.IP = uint16(int32(e.cpu.IP) + int32(offset) + int32(inst.Length))
+
 	case 0xE9:
 		offset := int16(inst.Operand1)
 		e.cpu.IP = uint16(int32(e.cpu.IP) + int32(offset) + int32(inst.Length))
+
 	case 0xEA:
 		e.cpu.IP = inst.Operand1
 		e.cpu.CS = inst.Operand2
@@ -2247,6 +3194,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x72, 0x73:
 		if (inst.Opcode == 0x72 && e.cpu.Flags.CF) || (inst.Opcode == 0x73 && !e.cpu.Flags.CF) {
 			offset := int8(inst.Operand1)
@@ -2254,6 +3202,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x76, 0x77:
 		if (inst.Opcode == 0x76 && (e.cpu.Flags.CF || e.cpu.Flags.ZF)) || (inst.Opcode == 0x77 && !(e.cpu.Flags.CF || e.cpu.Flags.ZF)) {
 			offset := int8(inst.Operand1)
@@ -2261,6 +3210,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x78, 0x79:
 		if (inst.Opcode == 0x78 && e.cpu.Flags.SF) || (inst.Opcode == 0x79 && !e.cpu.Flags.SF) {
 			offset := int8(inst.Operand1)
@@ -2268,6 +3218,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x7C, 0x7D:
 		sfNeOF := e.cpu.Flags.SF != e.cpu.Flags.OF
 		if (inst.Opcode == 0x7C && sfNeOF) || (inst.Opcode == 0x7D && !sfNeOF) {
@@ -2276,6 +3227,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x7E, 0x7F:
 		sfNeOF := e.cpu.Flags.SF != e.cpu.Flags.OF
 		if (inst.Opcode == 0x7E && (e.cpu.Flags.ZF || sfNeOF)) || (inst.Opcode == 0x7F && !(e.cpu.Flags.ZF || sfNeOF)) {
@@ -2284,6 +3236,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x70, 0x71:
 		if (inst.Opcode == 0x70 && e.cpu.Flags.OF) || (inst.Opcode == 0x71 && !e.cpu.Flags.OF) {
 			offset := int8(inst.Operand1)
@@ -2291,6 +3244,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0x7A, 0x7B:
 		if (inst.Opcode == 0x7A && e.cpu.Flags.PF) || (inst.Opcode == 0x7B && !e.cpu.Flags.PF) {
 			offset := int8(inst.Operand1)
@@ -2299,6 +3253,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.IP += uint16(inst.Length)
 		}
 
+	// Loop instructions
 	case 0xE0:
 		e.cpu.CX--
 		if e.cpu.CX != 0 && !e.cpu.Flags.ZF {
@@ -2307,6 +3262,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0xE1:
 		e.cpu.CX--
 		if e.cpu.CX != 0 && e.cpu.Flags.ZF {
@@ -2315,6 +3271,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0xE2:
 		e.cpu.CX--
 		if e.cpu.CX != 0 {
@@ -2323,6 +3280,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		} else {
 			e.cpu.IP += uint16(inst.Length)
 		}
+
 	case 0xE3:
 		if e.cpu.CX == 0 {
 			offset := int8(inst.Operand1)
@@ -2331,10 +3289,12 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.IP += uint16(inst.Length)
 		}
 
+	// Call/Return
 	case 0xE8:
 		e.Push(e.cpu.IP + uint16(inst.Length))
 		offset := int16(inst.Operand1)
 		e.cpu.IP = uint16(int32(e.cpu.IP) + int32(offset) + int32(inst.Length))
+
 	case 0x9A:
 		e.Push(e.cpu.CS)
 		e.Push(e.cpu.IP + uint16(inst.Length))
@@ -2343,55 +3303,70 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 
 	case 0xC3:
 		e.cpu.IP = e.Pop()
+
 	case 0xC2:
 		e.cpu.IP = e.Pop()
 		e.cpu.SP += inst.Operand1
+
 	case 0xCB:
 		e.cpu.IP = e.Pop()
 		e.cpu.CS = e.Pop()
+
 	case 0xCA:
 		e.cpu.IP = e.Pop()
 		e.cpu.CS = e.Pop()
 		e.cpu.SP += inst.Operand1
 
+	// Interrupts
 	case 0xCD:
 		e.HandleInterrupt(byte(inst.Operand1))
 		e.cpu.IP += uint16(inst.Length)
+
 	case 0xCC:
 		e.HandleInterrupt(3)
 		e.cpu.IP++
+
 	case 0xCE:
 		if e.cpu.Flags.OF {
 			e.HandleInterrupt(4)
 		}
 		e.cpu.IP++
+
 	case 0xCF:
 		e.cpu.IP = e.Pop()
 		e.cpu.CS = e.Pop()
 		e.cpu.Flags.FromUint16(e.Pop())
 
+	// Flag operations
 	case 0xF8:
 		e.cpu.Flags.CF = false
 		e.cpu.IP++
+
 	case 0xF9:
 		e.cpu.Flags.CF = true
 		e.cpu.IP++
+
 	case 0xFA:
 		e.cpu.Flags.IF = false
 		e.cpu.IP++
+
 	case 0xFB:
 		e.cpu.Flags.IF = true
 		e.cpu.IP++
+
 	case 0xFC:
 		e.cpu.Flags.DF = false
 		e.cpu.IP++
+
 	case 0xFD:
 		e.cpu.Flags.DF = true
 		e.cpu.IP++
+
 	case 0xF5:
 		e.cpu.Flags.CF = !e.cpu.Flags.CF
 		e.cpu.IP++
 
+	// Conversion
 	case 0x98:
 		if (e.cpu.GetAL() & 0x80) != 0 {
 			e.cpu.SetAH(0xFF)
@@ -2399,6 +3374,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 			e.cpu.SetAH(0x00)
 		}
 		e.cpu.IP++
+
 	case 0x99:
 		if (e.cpu.AX & 0x8000) != 0 {
 			e.cpu.DX = 0xFFFF
@@ -2415,6 +3391,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.Flags.ZF = (flags & 0x40) != 0
 		e.cpu.Flags.SF = (flags & 0x80) != 0
 		e.cpu.IP++
+
 	case 0x9F:
 		flags := byte(0x02)
 		if e.cpu.Flags.CF {
@@ -2435,6 +3412,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.SetAH(flags)
 		e.cpu.IP++
 
+	// BCD operations
 	case 0xD4:
 		base := byte(inst.Operand1)
 		if base == 0 {
@@ -2445,6 +3423,7 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.SetAL(al % base)
 		e.cpu.UpdateArithmeticFlags16(e.cpu.AX)
 		e.cpu.IP += uint16(inst.Length)
+
 	case 0xD5:
 		base := byte(inst.Operand1)
 		if base == 0 {
@@ -2455,20 +3434,812 @@ func (e *DOSEmulator) Execute(inst *Instruction) {
 		e.cpu.SetAH(0)
 		e.cpu.UpdateArithmeticFlags8(al)
 		e.cpu.IP += uint16(inst.Length)
+
 	case 0xD7:
 		addr := CalculateAddress(e.cpu.DS, e.cpu.BX+uint16(e.cpu.GetAL()))
 		e.cpu.SetAL(e.memory.ReadByte(addr))
 		e.cpu.IP++
 
+	// Halt
 	case 0xF4:
 		e.running = false
 		if e.debugMode {
 			fmt.Println("CPU halted")
 		}
 
+	// REP prefix
 	case 0xF2, 0xF3:
 		e.repeatPrefix = inst.Opcode
 		e.cpu.IP++
+
+	// Group opcodes 0x80-0x83
+	case 0x80, 0x82:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		imm := byte(e.memory.ReadByte(CalculateAddress(e.cpu.CS, e.cpu.IP+2+uint16(e.decoder.calculateModRMLength(inst.ModRM)))))
+
+		var dst byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.GetAL()
+			case 1:
+				dst = e.cpu.GetCL()
+			case 2:
+				dst = e.cpu.GetDL()
+			case 3:
+				dst = e.cpu.GetBL()
+			case 4:
+				dst = e.cpu.GetAH()
+			case 5:
+				dst = e.cpu.GetCH()
+			case 6:
+				dst = e.cpu.GetDH()
+			case 7:
+				dst = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadByte(addr)
+		}
+
+		var result8 byte
+		switch reg {
+		case 0:
+			result := uint16(dst) + uint16(imm)
+			e.cpu.Flags.CF = result > 0xFF
+			result8 = byte(result)
+			e.cpu.Flags.OF = ((dst^result8)&(imm^result8)&0x80) != 0
+		case 1:
+			result8 = dst | imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 2:
+			carry := byte(0)
+			if e.cpu.Flags.CF {
+				carry = 1
+			}
+			result := uint16(dst) + uint16(imm) + uint16(carry)
+			e.cpu.Flags.CF = result > 0xFF
+			result8 = byte(result)
+			e.cpu.Flags.OF = ((dst^result8)&(imm^result8)&0x80) != 0
+		case 3:
+			borrow := byte(0)
+			if e.cpu.Flags.CF {
+				borrow = 1
+			}
+			result := int16(dst) - int16(imm) - int16(borrow)
+			e.cpu.Flags.CF = result < 0
+			result8 = byte(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result8)&0x80) != 0
+		case 4:
+			result8 = dst & imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 5:
+			result := int16(dst) - int16(imm)
+			e.cpu.Flags.CF = result < 0
+			result8 = byte(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result8)&0x80) != 0
+		case 6:
+			result8 = dst ^ imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 7:
+			result := int16(dst) - int16(imm)
+			e.cpu.Flags.CF = result < 0
+			result8 = byte(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result8)&0x80) != 0
+			e.cpu.UpdateArithmeticFlags8(result8)
+			e.cpu.IP += uint16(inst.Length)
+			return
+		}
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.SetAL(result8)
+			case 1:
+				e.cpu.SetCL(result8)
+			case 2:
+				e.cpu.SetDL(result8)
+			case 3:
+				e.cpu.SetBL(result8)
+			case 4:
+				e.cpu.SetAH(result8)
+			case 5:
+				e.cpu.SetCH(result8)
+			case 6:
+				e.cpu.SetDH(result8)
+			case 7:
+				e.cpu.SetBH(result8)
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteByte(addr, result8)
+		}
+		e.cpu.UpdateArithmeticFlags8(result8)
+		e.cpu.IP += uint16(inst.Length)
+
+	case 0x81:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		immAddr := CalculateAddress(e.cpu.CS, e.cpu.IP+2+uint16(e.decoder.calculateModRMLength(inst.ModRM)))
+		imm := e.memory.ReadWord(immAddr)
+
+		var dst uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.AX
+			case 1:
+				dst = e.cpu.CX
+			case 2:
+				dst = e.cpu.DX
+			case 3:
+				dst = e.cpu.BX
+			case 4:
+				dst = e.cpu.SP
+			case 5:
+				dst = e.cpu.BP
+			case 6:
+				dst = e.cpu.SI
+			case 7:
+				dst = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadWord(addr)
+		}
+
+		var result16 uint16
+		switch reg {
+		case 0:
+			result := uint32(dst) + uint32(imm)
+			e.cpu.Flags.CF = result > 0xFFFF
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^result16)&(imm^result16)&0x8000) != 0
+		case 1:
+			result16 = dst | imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 2:
+			carry := uint16(0)
+			if e.cpu.Flags.CF {
+				carry = 1
+			}
+			result := uint32(dst) + uint32(imm) + uint32(carry)
+			e.cpu.Flags.CF = result > 0xFFFF
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^result16)&(imm^result16)&0x8000) != 0
+		case 3:
+			borrow := uint16(0)
+			if e.cpu.Flags.CF {
+				borrow = 1
+			}
+			result := int32(dst) - int32(imm) - int32(borrow)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+		case 4:
+			result16 = dst & imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 5:
+			result := int32(dst) - int32(imm)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+		case 6:
+			result16 = dst ^ imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 7:
+			result := int32(dst) - int32(imm)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+			e.cpu.UpdateArithmeticFlags16(result16)
+			e.cpu.IP += uint16(inst.Length)
+			return
+		}
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.AX = result16
+			case 1:
+				e.cpu.CX = result16
+			case 2:
+				e.cpu.DX = result16
+			case 3:
+				e.cpu.BX = result16
+			case 4:
+				e.cpu.SP = result16
+			case 5:
+				e.cpu.BP = result16
+			case 6:
+				e.cpu.SI = result16
+			case 7:
+				e.cpu.DI = result16
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteWord(addr, result16)
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	case 0x83:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		imm8 := int8(e.memory.ReadByte(CalculateAddress(e.cpu.CS, e.cpu.IP+2+uint16(e.decoder.calculateModRMLength(inst.ModRM)))))
+		imm := uint16(int16(imm8))
+
+		var dst uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				dst = e.cpu.AX
+			case 1:
+				dst = e.cpu.CX
+			case 2:
+				dst = e.cpu.DX
+			case 3:
+				dst = e.cpu.BX
+			case 4:
+				dst = e.cpu.SP
+			case 5:
+				dst = e.cpu.BP
+			case 6:
+				dst = e.cpu.SI
+			case 7:
+				dst = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			dst = e.memory.ReadWord(addr)
+		}
+
+		var result16 uint16
+		switch reg {
+		case 0:
+			result := uint32(dst) + uint32(imm)
+			e.cpu.Flags.CF = result > 0xFFFF
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^result16)&(imm^result16)&0x8000) != 0
+		case 1:
+			result16 = dst | imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 2:
+			carry := uint16(0)
+			if e.cpu.Flags.CF {
+				carry = 1
+			}
+			result := uint32(dst) + uint32(imm) + uint32(carry)
+			e.cpu.Flags.CF = result > 0xFFFF
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^result16)&(imm^result16)&0x8000) != 0
+		case 3:
+			borrow := uint16(0)
+			if e.cpu.Flags.CF {
+				borrow = 1
+			}
+			result := int32(dst) - int32(imm) - int32(borrow)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+		case 4:
+			result16 = dst & imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 5:
+			result := int32(dst) - int32(imm)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+		case 6:
+			result16 = dst ^ imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+		case 7:
+			result := int32(dst) - int32(imm)
+			e.cpu.Flags.CF = result < 0
+			result16 = uint16(result)
+			e.cpu.Flags.OF = ((dst^imm)&(dst^result16)&0x8000) != 0
+			e.cpu.UpdateArithmeticFlags16(result16)
+			e.cpu.IP += uint16(inst.Length)
+			return
+		}
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.AX = result16
+			case 1:
+				e.cpu.CX = result16
+			case 2:
+				e.cpu.DX = result16
+			case 3:
+				e.cpu.BX = result16
+			case 4:
+				e.cpu.SP = result16
+			case 5:
+				e.cpu.BP = result16
+			case 6:
+				e.cpu.SI = result16
+			case 7:
+				e.cpu.DI = result16
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteWord(addr, result16)
+		}
+		e.cpu.UpdateArithmeticFlags16(result16)
+		e.cpu.IP += uint16(inst.Length)
+
+	// INC/DEC byte (0xFE)
+	case 0xFE:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var value byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				value = e.cpu.GetAL()
+			case 1:
+				value = e.cpu.GetCL()
+			case 2:
+				value = e.cpu.GetDL()
+			case 3:
+				value = e.cpu.GetBL()
+			case 4:
+				value = e.cpu.GetAH()
+			case 5:
+				value = e.cpu.GetCH()
+			case 6:
+				value = e.cpu.GetDH()
+			case 7:
+				value = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			value = e.memory.ReadByte(addr)
+		}
+
+		if reg == 0 {
+			value++
+		} else if reg == 1 {
+			value--
+		}
+
+		if mod == 3 {
+			switch rm {
+			case 0:
+				e.cpu.SetAL(value)
+			case 1:
+				e.cpu.SetCL(value)
+			case 2:
+				e.cpu.SetDL(value)
+			case 3:
+				e.cpu.SetBL(value)
+			case 4:
+				e.cpu.SetAH(value)
+			case 5:
+				e.cpu.SetCH(value)
+			case 6:
+				e.cpu.SetDH(value)
+			case 7:
+				e.cpu.SetBH(value)
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			e.memory.WriteByte(addr, value)
+		}
+		e.cpu.UpdateArithmeticFlags8(value)
+		e.cpu.IP += uint16(inst.Length)
+
+	// INC/DEC/CALL/JMP word (0xFF)
+	case 0xFF:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		if reg == 0 || reg == 1 {
+			var value uint16
+			if mod == 3 {
+				switch rm {
+				case 0:
+					value = e.cpu.AX
+				case 1:
+					value = e.cpu.CX
+				case 2:
+					value = e.cpu.DX
+				case 3:
+					value = e.cpu.BX
+				case 4:
+					value = e.cpu.SP
+				case 5:
+					value = e.cpu.BP
+				case 6:
+					value = e.cpu.SI
+				case 7:
+					value = e.cpu.DI
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				value = e.memory.ReadWord(addr)
+			}
+
+			if reg == 0 {
+				value++
+			} else {
+				value--
+			}
+
+			if mod == 3 {
+				switch rm {
+				case 0:
+					e.cpu.AX = value
+				case 1:
+					e.cpu.CX = value
+				case 2:
+					e.cpu.DX = value
+				case 3:
+					e.cpu.BX = value
+				case 4:
+					e.cpu.SP = value
+				case 5:
+					e.cpu.BP = value
+				case 6:
+					e.cpu.SI = value
+				case 7:
+					e.cpu.DI = value
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				e.memory.WriteWord(addr, value)
+			}
+			e.cpu.UpdateArithmeticFlags16(value)
+		} else if reg == 2 {
+			var target uint16
+			if mod == 3 {
+				switch rm {
+				case 0:
+					target = e.cpu.AX
+				case 1:
+					target = e.cpu.CX
+				case 2:
+					target = e.cpu.DX
+				case 3:
+					target = e.cpu.BX
+				case 4:
+					target = e.cpu.SP
+				case 5:
+					target = e.cpu.BP
+				case 6:
+					target = e.cpu.SI
+				case 7:
+					target = e.cpu.DI
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				target = e.memory.ReadWord(addr)
+			}
+			e.Push(e.cpu.IP + uint16(inst.Length))
+			e.cpu.IP = target
+			return
+		} else if reg == 4 {
+			var target uint16
+			if mod == 3 {
+				switch rm {
+				case 0:
+					target = e.cpu.AX
+				case 1:
+					target = e.cpu.CX
+				case 2:
+					target = e.cpu.DX
+				case 3:
+					target = e.cpu.BX
+				case 4:
+					target = e.cpu.SP
+				case 5:
+					target = e.cpu.BP
+				case 6:
+					target = e.cpu.SI
+				case 7:
+					target = e.cpu.DI
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				target = e.memory.ReadWord(addr)
+			}
+			e.cpu.IP = target
+			return
+		} else if reg == 6 {
+			var value uint16
+			if mod == 3 {
+				switch rm {
+				case 0:
+					value = e.cpu.AX
+				case 1:
+					value = e.cpu.CX
+				case 2:
+					value = e.cpu.DX
+				case 3:
+					value = e.cpu.BX
+				case 4:
+					value = e.cpu.SP
+				case 5:
+					value = e.cpu.BP
+				case 6:
+					value = e.cpu.SI
+				case 7:
+					value = e.cpu.DI
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				value = e.memory.ReadWord(addr)
+			}
+			e.Push(value)
+		}
+		e.cpu.IP += uint16(inst.Length)
+
+	// MUL/DIV group (0xF6, 0xF7)
+	case 0xF6:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var value byte
+		if mod == 3 {
+			switch rm {
+			case 0:
+				value = e.cpu.GetAL()
+			case 1:
+				value = e.cpu.GetCL()
+			case 2:
+				value = e.cpu.GetDL()
+			case 3:
+				value = e.cpu.GetBL()
+			case 4:
+				value = e.cpu.GetAH()
+			case 5:
+				value = e.cpu.GetCH()
+			case 6:
+				value = e.cpu.GetDH()
+			case 7:
+				value = e.cpu.GetBH()
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			value = e.memory.ReadByte(addr)
+		}
+
+		switch reg {
+		case 0, 1:
+			immAddr := CalculateAddress(e.cpu.CS, e.cpu.IP+2+uint16(e.decoder.calculateModRMLength(inst.ModRM)))
+			imm := e.memory.ReadByte(immAddr)
+			result := value & imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+			e.cpu.UpdateArithmeticFlags8(result)
+		case 2:
+			value = ^value
+			if mod == 3 {
+				switch rm {
+				case 0:
+					e.cpu.SetAL(value)
+				case 1:
+					e.cpu.SetCL(value)
+				case 2:
+					e.cpu.SetDL(value)
+				case 3:
+					e.cpu.SetBL(value)
+				case 4:
+					e.cpu.SetAH(value)
+				case 5:
+					e.cpu.SetCH(value)
+				case 6:
+					e.cpu.SetDH(value)
+				case 7:
+					e.cpu.SetBH(value)
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				e.memory.WriteByte(addr, value)
+			}
+		case 3:
+			value = byte(-int8(value))
+			e.cpu.Flags.CF = value != 0
+			if mod == 3 {
+				switch rm {
+				case 0:
+					e.cpu.SetAL(value)
+				case 1:
+					e.cpu.SetCL(value)
+				case 2:
+					e.cpu.SetDL(value)
+				case 3:
+					e.cpu.SetBL(value)
+				case 4:
+					e.cpu.SetAH(value)
+				case 5:
+					e.cpu.SetCH(value)
+				case 6:
+					e.cpu.SetDH(value)
+				case 7:
+					e.cpu.SetBH(value)
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				e.memory.WriteByte(addr, value)
+			}
+			e.cpu.UpdateArithmeticFlags8(value)
+		case 4:
+			result := uint16(e.cpu.GetAL()) * uint16(value)
+			e.cpu.AX = result
+			e.cpu.Flags.CF = (result > 0xFF)
+			e.cpu.Flags.OF = (result > 0xFF)
+		case 5:
+			result := int16(int8(e.cpu.GetAL())) * int16(int8(value))
+			e.cpu.AX = uint16(result)
+			e.cpu.Flags.CF = (result < -128 || result > 127)
+			e.cpu.Flags.OF = (result < -128 || result > 127)
+		case 6:
+			if value == 0 {
+				e.HandleInterrupt(0)
+			} else {
+				quotient := e.cpu.AX / uint16(value)
+				remainder := e.cpu.AX % uint16(value)
+				e.cpu.SetAL(byte(quotient))
+				e.cpu.SetAH(byte(remainder))
+			}
+		case 7:
+			if value == 0 {
+				e.HandleInterrupt(0)
+			} else {
+				quotient := int16(e.cpu.AX) / int16(int8(value))
+				remainder := int16(e.cpu.AX) % int16(int8(value))
+				e.cpu.SetAL(byte(quotient))
+				e.cpu.SetAH(byte(remainder))
+			}
+		}
+		e.cpu.IP += uint16(inst.Length)
+
+	case 0xF7:
+		mod := (inst.ModRM >> 6) & 0x03
+		reg := (inst.ModRM >> 3) & 0x07
+		rm := inst.ModRM & 0x07
+
+		var value uint16
+		if mod == 3 {
+			switch rm {
+			case 0:
+				value = e.cpu.AX
+			case 1:
+				value = e.cpu.CX
+			case 2:
+				value = e.cpu.DX
+			case 3:
+				value = e.cpu.BX
+			case 4:
+				value = e.cpu.SP
+			case 5:
+				value = e.cpu.BP
+			case 6:
+				value = e.cpu.SI
+			case 7:
+				value = e.cpu.DI
+			}
+		} else {
+			addr := e.calculateEffectiveAddress(mod, rm, inst)
+			value = e.memory.ReadWord(addr)
+		}
+
+		switch reg {
+		case 0, 1:
+			immAddr := CalculateAddress(e.cpu.CS, e.cpu.IP+2+uint16(e.decoder.calculateModRMLength(inst.ModRM)))
+			imm := e.memory.ReadWord(immAddr)
+			result := value & imm
+			e.cpu.Flags.CF = false
+			e.cpu.Flags.OF = false
+			e.cpu.UpdateArithmeticFlags16(result)
+		case 2:
+			value = ^value
+			if mod == 3 {
+				switch rm {
+				case 0:
+					e.cpu.AX = value
+				case 1:
+					e.cpu.CX = value
+				case 2:
+					e.cpu.DX = value
+				case 3:
+					e.cpu.BX = value
+				case 4:
+					e.cpu.SP = value
+				case 5:
+					e.cpu.BP = value
+				case 6:
+					e.cpu.SI = value
+				case 7:
+					e.cpu.DI = value
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				e.memory.WriteWord(addr, value)
+			}
+		case 3:
+			value = uint16(-int16(value))
+			e.cpu.Flags.CF = value != 0
+			if mod == 3 {
+				switch rm {
+				case 0:
+					e.cpu.AX = value
+				case 1:
+					e.cpu.CX = value
+				case 2:
+					e.cpu.DX = value
+				case 3:
+					e.cpu.BX = value
+				case 4:
+					e.cpu.SP = value
+				case 5:
+					e.cpu.BP = value
+				case 6:
+					e.cpu.SI = value
+				case 7:
+					e.cpu.DI = value
+				}
+			} else {
+				addr := e.calculateEffectiveAddress(mod, rm, inst)
+				e.memory.WriteWord(addr, value)
+			}
+			e.cpu.UpdateArithmeticFlags16(value)
+		case 4:
+			result := uint32(e.cpu.AX) * uint32(value)
+			e.cpu.AX = uint16(result & 0xFFFF)
+			e.cpu.DX = uint16(result >> 16)
+			e.cpu.Flags.CF = (e.cpu.DX != 0)
+			e.cpu.Flags.OF = (e.cpu.DX != 0)
+		case 5:
+			result := int32(int16(e.cpu.AX)) * int32(int16(value))
+			e.cpu.AX = uint16(result & 0xFFFF)
+			e.cpu.DX = uint16((result >> 16) & 0xFFFF)
+			e.cpu.Flags.CF = (result < -32768 || result > 32767)
+			e.cpu.Flags.OF = (result < -32768 || result > 32767)
+		case 6:
+			if value == 0 {
+				e.HandleInterrupt(0)
+			} else {
+				dividend := (uint32(e.cpu.DX) << 16) | uint32(e.cpu.AX)
+				quotient := dividend / uint32(value)
+				remainder := dividend % uint32(value)
+				e.cpu.AX = uint16(quotient)
+				e.cpu.DX = uint16(remainder)
+			}
+		case 7:
+			if value == 0 {
+				e.HandleInterrupt(0)
+			} else {
+				dividend := (int32(e.cpu.DX) << 16) | int32(e.cpu.AX)
+				quotient := dividend / int32(int16(value))
+				remainder := dividend % int32(int16(value))
+				e.cpu.AX = uint16(quotient)
+				e.cpu.DX = uint16(remainder)
+			}
+		}
+		e.cpu.IP += uint16(inst.Length)
 
 	default:
 		if e.debugMode {
@@ -2546,7 +4317,7 @@ func (e *DOSEmulator) SimpleShell() {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println("MS-DOS Emulator v5.0 - Full COM & EXE Support")
-	fmt.Println("Full 8086 CPU + BIOS + DOS + 150+ Instructions")
+	fmt.Println("Full 8086 CPU + BIOS + DOS + ALL Instructions")
 	fmt.Println()
 	fmt.Println("Type 'HELP' for available commands")
 	fmt.Println()
