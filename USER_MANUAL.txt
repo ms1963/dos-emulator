@@ -18,7 +18,7 @@ Appendices
 
 
 Introduction
-MS-DOS Emulator v4.0 is a complete implementation of an MS-DOS compatible environment written in Go. It emulates an Intel 8086 CPU with full BIOS and DOS interrupt support.
+MS-DOS Emulator v5.0 is a complete implementation of an MS-DOS compatible environment written in Go. It emulates an Intel 8086 CPU with full BIOS and DOS interrupt support.
 Key Features
 
 Complete 8086 CPU with all 16 registers
