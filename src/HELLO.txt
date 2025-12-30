@@ -4,6 +4,8 @@ Assemble hello.asm with:
 
 and then call
 
-    run hello.com from the shell. 
+    run hello.com 
+
+from the shell. 
 
 You can download nasm for different operating systems from www.nasm.us
