@@ -1,63 +1,68 @@
-MS-DOS Emulator v5.0 - User Manual
-Table of Contents
+# MS-DOS Emulator v5.0 - User Manual
 
-Introduction
-Installation
-Getting Started
-Shell Commands
-File Operations
-System Commands
-Emulator Commands
-Running Programs
-Debugging Features
-Technical Specifications
-Examples
-Troubleshooting
-FAQ
-Appendices
+## Table of Contents
+
+- Introduction
+- Installation
+- Getting Started
+- Shell Commands
+- File Operations
+- System Commands
+- Emulator Commands
+- Running Programs
+- Debugging Features
+- Technical Specifications
+- Examples
+- Troubleshooting
+- FAQ
+- Appendices
 
 
-Introduction
+## Introduction
 MS-DOS Emulator v5.0 is a complete implementation of an MS-DOS compatible environment written in Go. It emulates an Intel 8086 CPU with full BIOS and DOS interrupt support.
-Key Features
 
-Complete 8086 CPU with all 16 registers
-Full flags register (CF, PF, AF, ZF, SF, TF, IF, DF, OF)
-Over 100 instructions implemented
-BIOS interrupt support (INT 10h, 13h, 16h, 1Ah, 33h)
-DOS interrupt support (INT 21h with 50+ functions)
-Interactive shell with file system operations
-Advanced debugging tools (breakpoints, step mode, disassembler)
-Memory dump and analysis tools
-Performance statistics
+### Key Features
+
+- Complete 8086 CPU with all 16 registers
+- Full flags register (CF, PF, AF, ZF, SF, TF, IF, DF, OF)
+- Over 200 instructions implemented
+- BIOS interrupt support (INT 10h, 13h, 16h, 1Ah, 33h)
+- DOS interrupt support (INT 21h with 50+ functions)
+- Interactive shell with file system operations
+- Advanced debugging tools (breakpoints, step mode, disassembler)
+- Memory dump and analysis tools
+- Performance statistics
 
 
-Installation
-Prerequisites
+## Installation
+
+### Prerequisites
 
 Go 1.16 or higher
 Terminal or command prompt
 
-Building from Source
-# Navigate to the project directory
+### Building from Source
+#Navigate to the project directory
 cd dos-emulator
 
-# Initialize Go module
+#Initialize Go module
 go mod init dos-emulator
 
-# Build the emulator
+#Build the emulator
 go build -o dos-emulator main.go
 
-# Run the emulator
+#Run the emulator
 ./dos-emulator
 
-Windows Build
+#Windows Build
 go build -o dos-emulator.exe main.go
 dos-emulator.exe
 
 
-Getting Started
+## Getting Started
+
 Starting the Emulator
+
 Run the executable to start the interactive shell:
 ./dos-emulator
 
@@ -72,21 +77,23 @@ Type 'HELP' for available commands
 A:\>
 
 Command Line Usage
-# Interactive shell
+#Interactive shell
 ./dos-emulator
 
-# Run a COM file directly
+#Run a COM file directly
 ./dos-emulator program.com
 
-# Run with debug mode enabled
+#Run with debug mode enabled
 ./dos-emulator -d program.com
 
-# Show help
+#Show help
 ./dos-emulator -h
 ./dos-emulator --help
 
 
-Shell Commands
+## Shell Commands
+
+
 HELP - Display Available Commands
 Shows all available commands with descriptions.
 Usage:
@@ -125,11 +132,13 @@ programs  <DIR>         12-27-24  09:15p
 
 A:\>
 
+
 CD - Change Directory
 Changes the current working directory or displays the current directory path.
 Usage:
 CD [path]
 CD          (displays current directory)
+
 
 Examples:
 A:\> CD programs
@@ -141,6 +150,7 @@ A:\> CD
 A:\
 
 A:\> CD \programs\games
+
 
 MD / MKDIR - Make Directory
 Creates a new directory.
@@ -211,7 +221,7 @@ A:\> REN old.txt new.txt
 A:\> RENAME data.dat backup.dat
 
 
-System Commands
+## System Commands
 CLS - Clear Screen
 Clears the terminal screen.
 Usage:
@@ -284,7 +294,7 @@ System is ready
 A:\>
 
 
-Emulator Commands
+## Emulator Commands
 RUN / EXEC - Execute Program
 Loads and executes a COM or EXE file.
 Usage:
@@ -581,8 +591,9 @@ Exiting emulator...
 $
 
 
-Running Programs
-Creating a Simple Program
+## Running Programs
+
+### Creating a Simple Program
 Here's how to create a basic "Hello World" program:
 hello.asm:
 ; Hello World program for MS-DOS
@@ -603,6 +614,7 @@ section .data
     message db 'Hello, World!', 0Dh, 0Ah, '$'
 
 Assembling the Program
+
 Using NASM assembler:
 nasm -f bin -o hello.com hello.asm
 
@@ -626,7 +638,7 @@ A:\>
 Method 3: Command line
 ./dos-emulator hello.com
 
-Program Structure
+### Program Structure
 COM File Format:
 
 Starts at offset 100h (256 bytes)
@@ -650,7 +662,7 @@ int 21h
 message db 'Text here$'
 
 
-Debugging Features
+### Debugging Features
 Complete Debugging Workflow
 Step 1: Enable Debug Mode
 A:\> DEBUG
@@ -687,7 +699,7 @@ Step mode: true
 A:\> RUN test.com
 (step through each instruction)
 
-Advanced Debugging Techniques
+### Advanced Debugging Techniques
 Technique 1: Trace Execution Flow
 A:\> TRACE
 Trace mode: true
@@ -716,7 +728,7 @@ Press Enter (c=continue, q=quit, r=registers)> r
 Press Enter (c=continue, q=quit, r=registers)> c
 (continue execution)
 
-Debugging Example Session
+### Debugging Example Session
 A:\> DEBUG
 Debug mode: true
 
@@ -764,8 +776,9 @@ A:\> STATS
 A:\>
 
 
-Technical Specifications
-CPU Architecture
+## Technical Specifications
+### CPU Architecture
+
 Register Set:
 
 
@@ -919,8 +932,8 @@ Memory Map:
 
 
 
-Address Range
-Size
+## Address Range
+### Size
 Description
 
 
@@ -955,8 +968,8 @@ Segment:Offset Addressing:
 Physical Address = (Segment × 16) + Offset
 Example: CS:IP = 1000:0100 → 10000 + 0100 = 10100h
 
-Instruction Set
-Data Transfer Instructions:
+## Instruction Set
+### Data Transfer Instructions:
 
 MOV - Move data
 PUSH - Push onto stack
@@ -970,7 +983,7 @@ SAHF - Store AH to flags
 PUSHF - Push flags
 POPF - Pop flags
 
-Arithmetic Instructions:
+### Arithmetic Instructions:
 
 ADD - Addition
 ADC - Add with carry
@@ -993,7 +1006,7 @@ DAS - Decimal adjust after subtraction
 CBW - Convert byte to word
 CWD - Convert word to doubleword
 
-Logical Instructions:
+### Logical Instructions:
 
 AND - Logical AND
 OR - Logical OR
@@ -1001,7 +1014,7 @@ XOR - Logical XOR
 NOT - Logical NOT
 TEST - Test bits
 
-Shift and Rotate Instructions:
+### Shift and Rotate Instructions:
 
 SHL/SAL - Shift left
 SHR - Shift right logical
@@ -1011,7 +1024,7 @@ ROR - Rotate right
 RCL - Rotate through carry left
 RCR - Rotate through carry right
 
-String Instructions:
+### String Instructions:
 
 MOVS - Move string
 CMPS - Compare string
@@ -1022,7 +1035,7 @@ REP - Repeat prefix
 REPE/REPZ - Repeat while equal/zero
 REPNE/REPNZ - Repeat while not equal/not zero
 
-Control Transfer Instructions:
+### Control Transfer Instructions:
 
 JMP - Unconditional jump
 CALL - Call procedure
@@ -1049,7 +1062,7 @@ LOOP - Loop
 LOOPE/LOOPZ - Loop while equal/zero
 LOOPNE/LOOPNZ - Loop while not equal/not zero
 
-Processor Control Instructions:
+### Processor Control Instructions:
 
 CLC - Clear carry flag
 STC - Set carry flag
@@ -1062,18 +1075,18 @@ HLT - Halt
 WAIT - Wait
 NOP - No operation
 
-Interrupt Instructions:
+### Interrupt Instructions:
 
 INT - Software interrupt
 INTO - Interrupt on overflow
 IRET - Return from interrupt
 
-I/O Instructions:
+### I/O Instructions:
 
 IN - Input from port
 OUT - Output to port
 
-BIOS Interrupts
+### BIOS Interrupts
 INT 10h - Video Services:
 
 
@@ -1688,8 +1701,8 @@ Get PSP
 
 
 
-Examples
-Example 1: Hello World
+## Examples
+### Example 1: Hello World
 hello.asm:
 ; Simple Hello World program
 ORG 100h
@@ -1714,7 +1727,7 @@ Running program...
 Hello, World!
 Program exited with code: 0
 
-Example 2: User Input
+### Example 2: User Input
 input.asm:
 ; Program that reads user input
 ORG 100h
@@ -1755,7 +1768,7 @@ prompt:
 message:
     db 'You entered: $'
 
-Example 3: Simple Calculator
+### Example 3: Simple Calculator
 calc.asm:
 ; Add two single-digit numbers
 ORG 100h
@@ -1786,7 +1799,7 @@ ORG 100h
 Output:
 8
 
-Example 4: Loop Example
+### Example 4: Loop Example
 loop.asm:
 ; Display numbers 1 to 5
 ORG 100h
@@ -1820,7 +1833,7 @@ print_loop:
 Output:
 1 2 3 4 5
 
-Example 5: File Creation
+### Example 5: File Creation
 file.asm:
 ; Create a file and write to it
 ORG 100h
@@ -1871,7 +1884,7 @@ success:
 err_msg:
     db 'Error creating file!', 0Dh, 0Ah, '$'
 
-Example 6: String Operations
+### Example 6: String Operations
 string.asm:
 ; String copy using MOVSB
 ORG 100h
@@ -1905,7 +1918,7 @@ src_len equ $ - source
 dest:
     times 20 db 0
 
-Example 7: Conditional Jumps
+### Example 7: Conditional Jumps
 compare.asm:
 ; Compare two numbers
 ORG 100h
@@ -1943,7 +1956,7 @@ msg_equal:
 msg_less:
     db 'First is less', 0Dh, 0Ah, '$'
 
-Example 8: Subroutine Call
+### Example 8: Subroutine Call
 subroutine.asm:
 ; Using CALL and RET
 ORG 100h
@@ -1970,9 +1983,9 @@ Hello!
 Hello!
 
 
-Troubleshooting
-Common Issues and Solutions
-Issue 1: File Not Found
+## Troubleshooting
+### Common Issues and Solutions
+#### Issue 1: File Not Found
 Symptom:
 A:\> RUN program.com
 Error: open program.com: no such file or directory
@@ -1997,7 +2010,7 @@ chmod +r program.com
 
 
 
-Issue 2: Program Hangs
+#### Issue 2: Program Hangs
 Symptom:
 Program appears to hang or loop infinitely.
 Solutions:
@@ -2025,7 +2038,7 @@ Incorrect jump addresses
 
 
 
-Issue 3: Incorrect Output
+#### Issue 3: Incorrect Output
 Symptom:
 Program produces unexpected output or crashes.
 Solutions:
@@ -2053,7 +2066,7 @@ Wrong interrupt numbers
 
 
 
-Issue 4: Assembly Errors
+#### Issue 4: Assembly Errors
 Symptom:
 NASM reports errors during assembly.
 Common Errors:
@@ -2084,7 +2097,7 @@ mov word [100], ax
 
 
 
-Issue 5: Memory Access Errors
+#### Issue 5: Memory Access Errors
 Symptom:
 Program crashes or produces garbage output.
 Solutions:
@@ -2104,7 +2117,7 @@ mov es, ax
 
 
 
-Issue 6: Stack Overflow
+#### Issue 6: Stack Overflow
 Symptom:
 Program crashes after many PUSH operations or recursive calls.
 Solutions:
@@ -2127,7 +2140,7 @@ pop ax
 
 
 
-Issue 7: Interrupt Not Working
+#### Issue 7: Interrupt Not Working
 Symptom:
 INT 21h or other interrupts don't produce expected results.
 Solutions:
@@ -2166,15 +2179,19 @@ When troubleshooting a program:
  Disassemble code with DISASM
 
 
-FAQ
-General Questions
+## FAQ
+
+
+### General Questions
 Q: What is MS-DOS Emulator?
 A: MS-DOS Emulator is a software implementation of an Intel 8086 CPU with BIOS and DOS support, allowing you to run classic DOS programs on modern systems.
 Q: Can I run any DOS program?
 A: The emulator supports many simple DOS programs, especially those using standard INT 21h functions. Complex programs using advanced features, graphics modes, or direct hardware access may not work.
 Q: Is this a complete DOS implementation?
 A: The emulator implements the most commonly used DOS and BIOS functions. Some advanced or rarely-used features may not be available.
-Compatibility Questions
+
+
+### Compatibility Questions
 Q: Can I run MS-DOS games?
 A: Simple text-based games may work. Graphics-intensive games requiring VGA graphics, sound cards, or precise timing will not work.
 Q: What file formats are supported?
@@ -2183,7 +2200,9 @@ Q: Can I run Windows programs?
 A: No. This emulator only supports DOS programs, not Windows applications.
 Q: Will my old DOS programs work?
 A: Programs that use standard DOS services (INT 21h) and don't require special hardware will likely work. Test your specific program to be sure.
-Programming Questions
+
+
+### Programming Questions
 Q: How do I create COM files?
 A: Use an assembler like NASM:
 nasm -f bin -o program.com program.asm
@@ -2200,7 +2219,7 @@ A: Resources include:
 Online tutorials for 8086 assembly
 NASM documentation
 
-Technical Questions
+### Technical Questions
 Q: How accurate is the emulation?
 A: The emulator provides functional compatibility for most common operations. Timing and some hardware-specific features differ from real hardware.
 Q: What's the maximum program size?
@@ -2209,7 +2228,10 @@ Q: How much memory is available?
 A: The emulator provides 1MB of addressable memory, with 640KB of conventional memory available to programs.
 Q: Are interrupts fully implemented?
 A: Common BIOS (INT 10h, 13h, 16h, 1Ah) and DOS (INT 21h) interrupts are implemented. Some advanced functions may not be available.
-Usage Questions
+
+
+
+### Usage Questions
 Q: How do I exit a running program?
 A: Programs should exit using INT 21h function 4Ch. If a program hangs, you may need to use Ctrl+C (terminal dependent) or close the terminal.
 Q: Can I access my real file system?
@@ -2237,7 +2259,9 @@ Q: How can I measure performance?
 A: Use the STATS command to see execution statistics including instructions per second.
 Q: Is there a speed limit?
 A: The emulator runs as fast as your system allows. There's no artificial speed limiting.
-Error Messages
+
+
+### Error Messages
 Q: What does "Bad command or file name" mean?
 A: The command or file you entered doesn't exist or isn't recognized. Check spelling and use DIR to list files.
 Q: What does "File not found" mean?
@@ -2247,8 +2271,8 @@ A: The directory path you specified doesn't exist. Use DIR to see available dire
 Q: What does "Unhandled interrupt" mean?
 A: Your program called an interrupt function that isn't implemented in the emulator. Check your code or use a different approach.
 
-Appendices
-Appendix A: Complete Interrupt Reference
+## Appendices
+### Appendix A: Complete Interrupt Reference
 INT 10h - Video Services
 Function 00h - Set Video Mode
 Input:  AH = 00h
@@ -2440,7 +2464,7 @@ Input:  AH = 4Ch
         AL = return code
 Output: Does not return
 
-Appendix B: ASCII Table
+### Appendix B: ASCII Table
 Dec Hex Char | Dec Hex Char | Dec Hex Char | Dec Hex Char
   0  00 NUL |  32  20 SP  |  64  40  @  |  96  60  `
   1  01 SOH |  33  21  !  |  65  41  A  |  97  61  a
@@ -2475,7 +2499,7 @@ Dec Hex Char | Dec Hex Char | Dec Hex Char | Dec Hex Char
  30  1E RS  |  62  3E  >  |  94  5E  ^  | 126  7E  ~
  31  1F US  |  63  3F  ?  |  95  5F  _  | 127  7F DEL
 
-Appendix C: Error Codes
+### Appendix C: Error Codes
 DOS Error Codes (INT 21h):
 1   Invalid function number
 2   File not found
@@ -2496,7 +2520,7 @@ DOS Error Codes (INT 21h):
 17  Not same device
 18  No more files
 
-Appendix D: Keyboard Scan Codes
+### Appendix D: Keyboard Scan Codes
 Common Scan Codes:
 Key         Scan Code
 ESC         01h
@@ -2522,7 +2546,7 @@ F2          3Ch
 ...
 F10         44h
 
-Appendix E: File Attributes
+### Appendix E: File Attributes
 File Attribute Bits:
 Bit  Hex  Description
 0    01h  Read-only
@@ -2534,7 +2558,7 @@ Bit  Hex  Description
 6    40h  Reserved
 7    80h  Reserved
 
-Appendix F: Video Modes
+### Appendix F: Video Modes
 Common Video Modes:
 Mode  Type        Resolution  Colors
 00h   Text        40x25       16 (gray)
